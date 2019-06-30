@@ -1,0 +1,10 @@
+[package]
+name = "motd"
+version = "0.1.0"
+authors = ["Kevin Allison <kvnallsn@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+chrono ="0.4"
+pnet = "0.22"
+regex = "1"
