@@ -67,8 +67,11 @@ impl Motd {
             "uptime" => format!("{}", self.uptime),
             "hostname" => format!("{}", self.net.hostname),
             "users" => commands::users(args),
-            "ipaddr" => commands::ipaddr(args),
-            "conns" => commands::net(args),
+            "ipaddr" => self.net.ips(),
+            "conns" => format!(
+                "{} listening, {} established",
+                self.net.listen, self.net.established
+            ),
             "fortune" => commands::fortune(args),
             _ => panic!("Unrecognized command!"),
         }

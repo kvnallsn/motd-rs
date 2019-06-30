@@ -1,11 +1,8 @@
 //! Represts how long a system has been up (time since last reboot)
 
-use chrono::{
-    offset::{Local, TimeZone},
-    DateTime,
-};
-use regex::Regex;
-use std::{fmt, process::Command};
+use crate::commands;
+use chrono::{offset::Local, DateTime};
+use std::fmt;
 
 const SECONDS_PER_WEEK: u64 = 604800;
 const SECONDS_PER_DAY: u64 = 86400;
@@ -23,58 +20,32 @@ pub struct Uptime {
 }
 
 impl Uptime {
-    pub fn new(now: &DateTime<Local>) -> Uptime {
+    pub fn new(_now: &DateTime<Local>) -> Uptime {
         let mut uptime = Uptime::default();
 
-        let re = Regex::new(r".*\{\s*sec\s*=\s*(?P<secs>\d+),\s*usec\s*=\s*(?P<usecs>\d+)\s*\}")
-            .unwrap();
+        let mut seconds = commands::uptime();
 
-        let output = Command::new("sysctl")
-            .arg("kern.boottime")
-            .output()
-            .map(|out| out.stdout)
-            .map(|out| String::from_utf8(out).unwrap());
-
-        if let Ok(o) = output {
-            if let Some(caps) = re.captures(&o) {
-                let secs: i64 = match caps.name("secs") {
-                    Some(s) => s.as_str().parse().unwrap_or(0),
-                    None => 0,
-                };
-
-                let usecs: u32 = match caps.name("usecs") {
-                    Some(u) => u.as_str().parse().unwrap_or(0),
-                    None => 0,
-                };
-
-                //let naive = NaiveDateTime::from_timestamp(secs, usecs);
-                let naive = Local.timestamp(secs, usecs);
-                let elapsed = Local::now() - naive;
-
-                let mut seconds = elapsed.num_seconds() as u64;
-                if seconds > SECONDS_PER_WEEK {
-                    uptime.weeks = seconds / SECONDS_PER_WEEK;
-                    seconds -= uptime.weeks * SECONDS_PER_WEEK;
-                }
-
-                if seconds > SECONDS_PER_DAY {
-                    uptime.days = seconds / SECONDS_PER_DAY;
-                    seconds -= uptime.days * SECONDS_PER_DAY;
-                }
-
-                if seconds > SECONDS_PER_HOUR {
-                    uptime.hours = seconds / SECONDS_PER_HOUR;
-                    seconds -= uptime.hours * SECONDS_PER_HOUR;
-                }
-
-                if seconds > SECONDS_PER_MINUTE {
-                    uptime.minutes = seconds / SECONDS_PER_MINUTE;
-                    seconds -= uptime.minutes * SECONDS_PER_MINUTE;
-                }
-
-                uptime.seconds = seconds;
-            }
+        if seconds > SECONDS_PER_WEEK {
+            uptime.weeks = seconds / SECONDS_PER_WEEK;
+            seconds -= uptime.weeks * SECONDS_PER_WEEK;
         }
+
+        if seconds > SECONDS_PER_DAY {
+            uptime.days = seconds / SECONDS_PER_DAY;
+            seconds -= uptime.days * SECONDS_PER_DAY;
+        }
+
+        if seconds > SECONDS_PER_HOUR {
+            uptime.hours = seconds / SECONDS_PER_HOUR;
+            seconds -= uptime.hours * SECONDS_PER_HOUR;
+        }
+
+        if seconds > SECONDS_PER_MINUTE {
+            uptime.minutes = seconds / SECONDS_PER_MINUTE;
+            seconds -= uptime.minutes * SECONDS_PER_MINUTE;
+        }
+
+        uptime.seconds = seconds;
 
         uptime
     }

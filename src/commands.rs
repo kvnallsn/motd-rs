@@ -1,71 +1,65 @@
 //! All available commands (filters) that can be used to replaced captured information
 
-use chrono::{
-    naive::NaiveDateTime,
-    offset::{Local, TimeZone},
-};
-use regex::Regex;
-use std::process::Command;
+macro_rules! cmd {
+    ($command:expr,$args:expr) => {{
+        let mut cmd = std::process::Command::new($command);
+        if let Some(args) = $args {
+            cmd.args(args.split(' '));
+        }
 
-/// Generates the current date and returns a formatted string
-pub fn date(args: Option<String>) -> String {
-    let local = Local::now();
-    let format_str = args.unwrap_or("%Y-%m-%d %H:%M:%S".to_owned());
-    local.format(&format_str).to_string()
+        cmd.output()
+            .map(|out| out.stdout)
+            .map(|out| String::from_utf8(out).unwrap())
+            .map(|s| s.trim().to_string())
+    }};
+}
+
+use std::{collections::HashMap, io, process::Command};
+
+#[cfg(target_os = "linux")]
+mod linux;
+
+#[cfg(target_os = "macos")]
+mod osx;
+
+pub fn hostname(args: Option<String>) -> Result<String, io::Error> {
+    cmd!("hostname", args)
+}
+
+/// Returns the number of seconds since the box last restarted/booted
+pub fn uptime() -> u64 {
+    if cfg!(target_os = "macos") {
+        osx::uptime()
+    } else {
+        0
+    }
+}
+
+/// Returns the currently logged in user
+pub fn user(args: Option<String>) -> Result<String, io::Error> {
+    cmd!("whoami", args)
 }
 
 /// Generates the number of users currently logged in
-pub fn users(args: Option<String>) -> String {
+pub fn users(_args: Option<String>) -> String {
     format!("{} users logged in", 1)
 }
 
 /// Returns the local machine IP addressses
-pub fn ipaddr(args: Option<String>) -> String {
-    let mut addrs = String::new();
-
-    let interfaces = pnet::datalink::interfaces();
-    for interface in interfaces {
-        let mut should_add = false;
-
-        let mut s = String::new();
-        s.push_str(&format!("{}: ", interface.name));
-        for ip in interface.ips {
-            if ip.is_ipv4() {
-                s.push_str(&format!("{}, ", ip));
-                should_add = true;
-            }
-        }
-
-        if should_add {
-            addrs.push_str(&s);
-        }
+pub fn interfaces(args: Option<String>) -> HashMap<String, Vec<String>> {
+    if cfg!(target_os = "macos") {
+        osx::interfaces(args)
+    } else {
+        HashMap::new()
     }
-
-    addrs
 }
 
 // Returns number of listening and established connections
-pub fn net(args: Option<String>) -> String {
-    let listen_re = Regex::new("LISTEN").unwrap();
-    let established_re = Regex::new("ESTABLISHED").unwrap();
-
-    let output = Command::new("lsof")
-        .arg("-nP")
-        .arg("-i4TCP")
-        .output()
-        .map(|out| out.stdout)
-        .map(|out| String::from_utf8(out).unwrap());
-
-    if let Ok(o) = output {
-        let listen_count = listen_re.find_iter(&o).count();
-        let established_count = established_re.find_iter(&o).count();
-
-        format!(
-            "{} listening, {} established",
-            listen_count, established_count
-        )
+pub fn connections(args: Option<String>) -> (usize, usize) {
+    if cfg!(target_os = "macos") {
+        osx::connections(args)
     } else {
-        format!("none")
+        (0, 0)
     }
 }
 

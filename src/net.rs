@@ -1,28 +1,48 @@
 //! Networking related information
 
-use std::{fmt, process::Command};
+use crate::commands;
+use std::{collections::HashMap, fmt};
 
 /// All networking-related fields, to include interfaces,
 /// IP addresses, hostnames, etc.
 #[derive(Default)]
 pub struct Net {
     pub hostname: String,
+    pub listen: usize,
+    pub established: usize,
+    pub interfaces: HashMap<String, Vec<String>>,
 }
 
 impl Net {
     pub fn new() -> Net {
         let mut net = Net::default();
 
-        let output = Command::new("hostname")
-            .output()
-            .map(|out| out.stdout)
-            .map(|out| String::from_utf8(out).unwrap());
-
-        if let Ok(o) = output {
-            net.hostname = o.trim().to_string();
+        if let Ok(hostname) = commands::hostname(None) {
+            net.hostname = hostname;
         }
 
+        let (listen, established) = commands::connections(None);
+        net.listen = listen;
+        net.established = established;
+        net.interfaces = commands::interfaces(None);
+
         net
+    }
+
+    pub fn ips(&self) -> String {
+        let mut s = String::new();
+        for (name, ips) in self.interfaces.iter() {
+            if ips.len() > 0 {
+                s.push_str(name);
+                s.push_str(": ");
+
+                for ip in ips {
+                    s.push_str(&format!("{}", ip));
+                }
+            }
+        }
+
+        s
     }
 }
 
