@@ -11,10 +11,9 @@ macro_rules! cmd {
             .map(|out| out.stdout)
             .map(|out| String::from_utf8(out).unwrap())
             .map(|s| s.trim().to_string())
+            .map_err(|e| crate::error::Error::from(e))
     }};
 }
-
-use std::io;
 
 #[cfg(target_os = "linux")]
 mod linux;
@@ -34,13 +33,3 @@ pub use unix::*;
 /// Place all commands that will run across all oses here
 mod common;
 pub use common::*;
-
-/// Returns the hostname of this computer
-pub fn hostname(args: Option<String>) -> Result<String, io::Error> {
-    cmd!("hostname", args)
-}
-
-/// Returns the currently logged in user
-pub fn user(args: Option<String>) -> Result<String, io::Error> {
-    cmd!("whoami", args)
-}

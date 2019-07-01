@@ -1,5 +1,6 @@
 //! All commands that will work on every operating system
 
+use crate::error::MotdResult;
 use std::collections::HashMap;
 
 // Returns the IPs associated with this device
@@ -19,4 +20,14 @@ pub fn interfaces(_args: Option<String>) -> HashMap<String, Vec<String>> {
     }
 
     map
+}
+
+/// Returns the hostname of this computer
+pub fn hostname(args: Option<String>) -> MotdResult<String> {
+    cmd!("hostname", args)
+}
+
+/// Returns the currently logged in user
+pub fn user(args: Option<String>) -> MotdResult<String> {
+    cmd!("whoami", args)
 }
