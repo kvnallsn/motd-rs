@@ -22,7 +22,7 @@ pub fn connections(_args: Option<String>) -> (usize, usize) {
 pub fn interfaces(_args: Option<String>) -> HashMap<String, Vec<String>> {
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
 
-    let interfaces = pnet::datalink::interfaces();
+    let interfaces = pnet_datalink::interfaces();
     for interface in interfaces {
         let mut addrs: Vec<String> = Vec::new();
         for ip in interface.ips {

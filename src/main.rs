@@ -5,6 +5,7 @@
 use chrono::{offset::Local, DateTime};
 use regex::{Captures, Regex};
 use std::{
+    collections::HashSet,
     fs::File,
     io::{self, Read},
     path::Path,
@@ -18,6 +19,7 @@ mod user;
 pub struct Motd {
     /// Information about the current user
     pub user: user::User,
+    pub users: HashSet<String>,
     pub uptime: uptime::Uptime,
     pub net: net::Net,
     pub date: DateTime<Local>,
@@ -28,12 +30,18 @@ impl Motd {
         let now = Local::now();
         Motd {
             user: user::User::new(),
+            users: commands::users(None),
             uptime: uptime::Uptime::new(&now),
             net: net::Net::new(),
             date: now,
         }
     }
 
+    /// Renders an Message of the Day Template
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to MotD template
     pub fn render<P: AsRef<Path>>(&self, path: P) -> Result<String, io::Error> {
         // Regex to find all commands to substitute
         let re = Regex::new(r"\{\{ (?P<cmd>[[:alpha:]]+)(\((?P<args>.*)\))? \}\}").unwrap();
@@ -66,7 +74,7 @@ impl Motd {
                 .to_string(),
             "uptime" => format!("{}", self.uptime),
             "hostname" => format!("{}", self.net.hostname),
-            "users" => commands::users(args),
+            "users" => self.users(),
             "ipaddr" => self.net.ips(),
             "conns" => format!(
                 "{} listening, {} established",
@@ -75,6 +83,19 @@ impl Motd {
             "fortune" => commands::fortune(args),
             _ => panic!("Unrecognized command!"),
         }
+    }
+
+    /// Formats the string for printing the active users on the system
+    fn users(&self) -> String {
+        let mut usrs = String::new();
+        for (i, user) in self.users.iter().enumerate() {
+            usrs.push_str(user);
+            if (i + 1) < self.users.len() {
+                usrs.push_str(", ");
+            }
+        }
+
+        format!("{} users ({})", self.users.len(), usrs)
     }
 }
 

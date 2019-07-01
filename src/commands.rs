@@ -14,7 +14,11 @@ macro_rules! cmd {
     }};
 }
 
-use std::{collections::HashMap, io, process::Command};
+use std::{
+    collections::{HashMap, HashSet},
+    io,
+    process::Command,
+};
 
 #[cfg(target_os = "linux")]
 mod linux;
@@ -22,6 +26,19 @@ mod linux;
 #[cfg(target_os = "macos")]
 mod osx;
 
+#[cfg(target_family = "unix")]
+mod unix;
+
+/// Returns a list of logged in user's usernames
+pub fn users(args: Option<String>) -> HashSet<String> {
+    if cfg!(target_family = "unix") {
+        unix::users(args)
+    } else {
+        HashSet::new()
+    }
+}
+
+/// Returns the hostname of this computer
 pub fn hostname(args: Option<String>) -> Result<String, io::Error> {
     cmd!("hostname", args)
 }
@@ -38,11 +55,6 @@ pub fn uptime() -> u64 {
 /// Returns the currently logged in user
 pub fn user(args: Option<String>) -> Result<String, io::Error> {
     cmd!("whoami", args)
-}
-
-/// Generates the number of users currently logged in
-pub fn users(_args: Option<String>) -> String {
-    format!("{} users logged in", 1)
 }
 
 /// Returns the local machine IP addressses

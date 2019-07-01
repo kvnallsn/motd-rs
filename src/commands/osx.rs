@@ -1,4 +1,4 @@
-//! All available commands (filters) that can be used to replaced captured information
+//! Commands that are specific to mac OS X
 
 mod net;
 pub use net::*;

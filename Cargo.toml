@@ -6,5 +6,5 @@ edition = "2018"
 
 [dependencies]
 chrono ="0.4"
-pnet = "0.22"
+pnet_datalink = "0.22"
 regex = "1"
