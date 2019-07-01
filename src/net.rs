@@ -33,8 +33,7 @@ impl Net {
         let mut s = String::new();
         for (name, ips) in self.interfaces.iter() {
             if ips.len() > 0 {
-                s.push_str(name);
-                s.push_str(": ");
+                s.push_str(&format!("[{}]: ", name));
 
                 for ip in ips {
                     s.push_str(&format!("{}", ip));

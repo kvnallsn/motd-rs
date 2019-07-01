@@ -19,3 +19,14 @@ pub fn users(args: Option<String>) -> HashSet<String> {
 
     set
 }
+
+/// Runs the fortune command
+pub fn fortune(_args: Option<String>) -> String {
+    let output = cmd!("fortune", Some("-a"));
+
+    if let Ok(o) = output {
+        o.trim().to_string()
+    } else {
+        "No Fortune".to_string()
+    }
+}
