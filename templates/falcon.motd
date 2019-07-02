@@ -17,6 +17,6 @@
    \  \     /       \     /  /        IPs...............: {{ ipaddr }}
     `.     /         \     .'         Connections.......: {{ conns }}
       `.  /._________.\  .'           Hostname..........: {{ hostname }}
-        `--._________.--'
+        `--._________.--'             Processes.........: {{ process }}  
 
 {{ fortune(-a) }}

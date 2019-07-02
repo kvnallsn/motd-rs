@@ -1,7 +1,7 @@
 //! Unix-family specific commands.  Any function in this file should run on ALL
 //! Unix variants (Mac OS X, Linux, FreeBSD, OpenBSD, etc)
 
-use std::collections::HashSet;
+use std::{collections::HashSet, string::ToString};
 
 /// Returns a list of logged in users
 pub fn users(args: Option<String>) -> HashSet<String> {
@@ -18,6 +18,20 @@ pub fn users(args: Option<String>) -> HashSet<String> {
     }
 
     set
+}
+
+/// Returns a list of processes
+pub fn processes(args: Option<&str>) -> Vec<String> {
+    let output = cmd!("ps", Some("au"));
+
+    if let Ok(output) = output {
+        output
+            .split_terminator("\n")
+            .map(ToString::to_string)
+            .collect()
+    } else {
+        Vec::new()
+    }
 }
 
 /// Runs the fortune command

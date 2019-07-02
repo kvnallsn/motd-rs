@@ -67,4 +67,11 @@ impl System {
 
         format!("{} users ({})", users.len(), usrs)
     }
+
+    /// Returns the count of all processes running on the system
+    pub fn processes(&self) -> String {
+        let procs = commands::processes(None);
+
+        format!("{} running", procs.len() - 1)
+    }
 }

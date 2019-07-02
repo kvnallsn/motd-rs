@@ -69,6 +69,7 @@ impl Motd {
             "users" => self.sys.users(),
             "ipaddr" => self.net.ips(),
             "conns" => self.net.connections(),
+            "process" => self.sys.processes(),
             "fortune" => commands::fortune(None),
             _ => panic!("Unrecognized command!"),
         }
