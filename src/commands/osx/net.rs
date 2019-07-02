@@ -2,7 +2,9 @@
 
 use regex::Regex;
 
-// Returns number of listening and established connections
+// Returns number of listening and established connections (IPv4 TCP only)
+//
+// Command: `lsof -nP -i4TCP'
 pub fn connections(_args: Option<String>) -> (usize, usize) {
     let listen_re = Regex::new("LISTEN").unwrap();
     let established_re = Regex::new("ESTABLISHED").unwrap();

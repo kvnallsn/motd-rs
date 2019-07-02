@@ -8,6 +8,8 @@ use regex::Regex;
 /// function converts that timestamp to a local time and subtracts it
 /// from the current time to get the number of seconds since the box
 /// last booted.
+///
+/// Command: `sysctl kern.boottime`
 pub fn uptime() -> u64 {
     let re =
         Regex::new(r".*\{\s*sec\s*=\s*(?P<secs>\d+),\s*usec\s*=\s*(?P<usecs>\d+)\s*\}").unwrap();
