@@ -45,7 +45,7 @@ impl Net {
     /// Returns a formatted string listing the number of listening connections
     /// and the number of established connections
     pub fn connections(&self) -> String {
-        let (listen, established) = commands::connections(None);
+        let (listen, established) = commands::connections(None).unwrap_or((0, 0));
         format!("{} listening, {} established", listen, established)
     }
 }
