@@ -12,7 +12,7 @@ const UDP_RE_STR: &'static str = r"UDP:\s+inuse\s+(?P<inuse>\d+)\s+mem\s+(?P<mem
 //
 // Command: `lsof -nP -i4TCP'
 pub fn connections(_args: Option<String>) -> MotdResult<(usize, usize)> {
-    let mut fd = match File::open("/proc/net/sockstat")?;
+    let mut fd = File::open("/proc/net/sockstat")?;
     let mut contents = String::new();
     fd.read_to_string(&mut contents);
 
