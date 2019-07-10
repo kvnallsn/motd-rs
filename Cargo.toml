@@ -12,4 +12,3 @@ regex = "1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
-netlink-sys = "0.1"

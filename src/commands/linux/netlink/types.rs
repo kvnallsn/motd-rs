@@ -1,5 +1,6 @@
 //! Varios different requests/responses we can send
 
+mod nlinetdiag;
 mod nlsockdiag;
 
-pub use nlsockdiag::{InternetSocketRequest, InternetSocketResponse};
+pub use nlinetdiag::{InternetSocketRequest, InternetSocketResponse};
