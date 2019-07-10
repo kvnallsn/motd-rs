@@ -1,6 +1,6 @@
 //! A NETLINK message header, present on all NETLINK messages
 
-use super::{NlFlag, NlINetDiagReqV2, NlMsgType};
+use super::{NlFlag, NlMsgType};
 use std::mem;
 
 /// Represents the header sent on all NETLINK messages, to include the
@@ -66,14 +66,5 @@ impl NlMsgHeader {
         hdr.nlmsg_pid = u32!(v);
 
         Some(hdr)
-    }
-
-    pub fn build(mut self, req: NlINetDiagReqV2) -> Vec<u8> {
-        self.nlmsg_len = 72; // expected size of header + NlINetDiagReqV2
-
-        let mut msg = self.to_vec();
-        msg.append(&mut req.to_vec());
-
-        msg
     }
 }

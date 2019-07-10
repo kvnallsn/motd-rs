@@ -1,48 +1,86 @@
 //! All sockdiag(7) related functions and structs
 
-use super::NlMsgHeader;
+use super::super::{
+    AddressFamily, L4Protocol, NetlinkFamily, NetlinkRequest, NetlinkResponse, NetlinkSocket,
+    NlGetFlag, NlMsgHeader, NlMsgType,
+};
 use std::{
     mem,
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
 };
 
-/// Supported IP protocols
-#[derive(Clone, Copy, Debug)]
-pub enum AddressFamily {
-    /// Unknown address space
-    Unknown = 0x00,
+/// Public facing struct to request internet socket (aka TCP, UDP, etc.)
+/// socket information
+pub struct InternetSocketRequest(NlMsgHeader, NlINetDiagReqV2);
 
-    /// IPv4 address space
-    Inet = 0x02,
+impl InternetSocketRequest {
+    /// Creates a new request to return information about internet sockets
+    /// (TCP, UDP, and UDPLITE) on this machine.
+    ///
+    /// Defaults to:
+    ///     AddressFamily: Inet (i.e., IPv4)
+    ///     L4Protocol: TCP
+    ///     Socket State: LISTEN
+    pub fn new() -> InternetSocketRequest {
+        InternetSocketRequest(
+            NlMsgHeader::new(NlMsgType::SockDiagByFamily, flags!(NlGetFlag::Dump)),
+            NlINetDiagReqV2::default(),
+        )
+    }
 
-    /// IPv6 address space
-    Inet6 = 0x0A,
-}
+    /// Sets the address family for this request.  Valid options are:
+    /// * `Inet` - IPv4 Address Space
+    /// * `Inet6` - IPv6 Addres Space
+    ///
+    /// # Arguments
+    ///
+    /// * `family` - Address family for this request
+    pub fn address_family(mut self, family: AddressFamily) -> Self {
+        self.1.sdiag_family = family;
+        self
+    }
 
-impl AddressFamily {
-    pub fn from_u8(u: u8) -> AddressFamily {
-        match u {
-            0x02 => AddressFamily::Inet,
-            0x0A => AddressFamily::Inet6,
-            _ => AddressFamily::Unknown,
-        }
+    /// Sets the layer 4 protocol for this request.  Valid options are:
+    /// * `TCP` - Trasmission Control Protocol
+    /// * `UDP` - User Datagram Protocol
+    /// * `UDPLITE` - ???
+    ///
+    /// # Arguments
+    ///
+    /// * `proto` - Layer 4 protocol for this request
+    pub fn protocol(mut self, proto: L4Protocol) -> Self {
+        self.1.sdiag_protocol = proto;
+        self
+    }
+
+    /// Sets the states the sockets must be in.  Valid states are:
+    /// * `LISTEN`
+    /// * `CONNECTION_ESTABLISHED`
+    pub fn socket_state(mut self) -> Self {
+        self
     }
 }
 
-/// Supported L4 protocols
-#[derive(Clone, Copy, Debug)]
-pub enum L4Protocol {
-    /// Transmission Control Protocol
-    Tcp = 0x06,
+impl NetlinkRequest for InternetSocketRequest {
+    /// Builds a message as an vector of bytes
+    fn build(self) -> Vec<u8> {
+        let mut hdr = self.0;
+        let payload = self.1;
 
-    /// User Datagaram Protocol
-    Udp = 0x11,
+        // expected size of header + NlINetDiagReqV2
+        hdr.nlmsg_len = 72;
+        let mut msg = hdr.to_vec();
+        msg.append(&mut payload.to_vec());
+        msg
+    }
 
-    /// User Datagaram Protocol Lite
-    UdpLite = 136,
+    /// Returns the family/kernel module to use for this request
+    fn family(&self) -> NetlinkFamily {
+        NetlinkFamily::SockDiag
+    }
 }
 
-/// A Internet (INet) Diagnostics request.  Returns all information
+/// An Internet (INet) Diagnostics request.  Returns all information
 /// regarding IPv4 and IPv6 sockets on this computer
 #[derive(Clone, Copy, Debug)]
 pub struct NlINetDiagReqV2 {
@@ -148,7 +186,6 @@ impl std::default::Default for NlINetDiagSockId {
 
 impl NlINetDiagSockId {
     pub fn from_msg(family: &AddressFamily, v: &mut Vec<u8>) -> NlINetDiagSockId {
-        println!("Building Net Diag Msg");
         let src_port = u16_be!(v);
         let dst_port = u16_be!(v);
         let src_ip = match family {
@@ -219,7 +256,7 @@ impl NlINetDiagSockId {
 
 /// Response to a INet socket request message
 #[derive(Clone, Debug)]
-pub struct NlINetDiagMsg {
+pub struct InternetSocketResponse {
     idiag_family: AddressFamily,
     idiag_state: u8,
     idiag_time: u8,
@@ -232,12 +269,12 @@ pub struct NlINetDiagMsg {
     idiag_inode: u32,
 }
 
-impl NlINetDiagMsg {
-    pub fn new(hdr: &NlMsgHeader, v: &mut Vec<u8>) -> NlINetDiagMsg {
+impl InternetSocketResponse {
+    pub fn new(hdr: &NlMsgHeader, v: &mut Vec<u8>) -> InternetSocketResponse {
         let sz = mem::size_of::<Self>();
         let mut b: Vec<u8> = v.drain(0..sz).collect();
 
-        let mut msg = NlINetDiagMsg {
+        let mut msg = InternetSocketResponse {
             idiag_family: AddressFamily::Unknown,
             idiag_state: 0,
             idiag_time: 0,
@@ -250,7 +287,8 @@ impl NlINetDiagMsg {
             idiag_inode: 0,
         };
 
-        msg.idiag_family = AddressFamily::from_u8(u8!(b));
+        //msg.idiag_family = AddressFamily::from(u8!(b));
+        msg.idiag_family = u8!(b).into();
         msg.idiag_state = u8!(b);
         msg.idiag_time = u8!(b);
         msg.idiag_retrans = u8!(b);

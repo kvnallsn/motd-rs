@@ -1,39 +1,39 @@
 //! The overall NETLINK message container
 
-use super::{NlINetDiagMsg, NlMsgHeader, NlMsgType};
+use super::{types, NlMsgHeader, NlMsgType};
 use std::mem;
 
 /// A payload (or defined request type) to embed in the NETLINK message
 #[derive(Clone, Debug)]
-pub enum NlMsgPayload {
+pub enum NlResponsePayload {
     /// No payload
     None,
 
     /// Socket Diagnostic Response
-    SockDiag(NlINetDiagMsg),
+    SockDiag(types::InternetSocketResponse),
 }
 
 /// Container to hold a message received from the system
 #[derive(Clone, Debug)]
-pub struct NlMessage {
+pub struct NetlinkResponse {
     /// Header, defining size and other characteristics
     pub header: NlMsgHeader,
 
     /// The payload, wrapping the response information
-    pub payload: NlMsgPayload,
+    pub payload: NlResponsePayload,
 
     /// Miscellanous attributes received
     pub attrs: Vec<u8>,
 }
 
-impl NlMessage {
-    /// Creates a new Netlink Message from a buffer, returning the message
-    /// if one could be created, or None if creation failed.
+impl NetlinkResponse {
+    /// Creates a new Netlink Response Message from a buffer, returning the
+    /// message if one could be created, or None if creation failed.
     ///
     /// # Arguments
     ///
     /// * `v` - Vec to extract message from (and advance)
-    pub fn new(v: &mut Vec<u8>) -> Option<NlMessage> {
+    pub fn new(v: &mut Vec<u8>) -> Option<NetlinkResponse> {
         let hdr = NlMsgHeader::from_vec(v);
 
         if let Some(header) = hdr {
@@ -46,13 +46,13 @@ impl NlMessage {
             let mut data = v.drain(0..sz).collect();
 
             let payload = match header.nlmsg_type {
-                NlMsgType::SockDiagByFamily => {
-                    NlMsgPayload::SockDiag(NlINetDiagMsg::new(&header, &mut data))
-                }
-                _ => NlMsgPayload::None,
+                NlMsgType::SockDiagByFamily => NlResponsePayload::SockDiag(
+                    types::InternetSocketResponse::new(&header, &mut data),
+                ),
+                _ => NlResponsePayload::None,
             };
 
-            Some(NlMessage {
+            Some(NetlinkResponse {
                 header,
                 payload,
                 attrs: data,
@@ -60,5 +60,11 @@ impl NlMessage {
         } else {
             None
         }
+    }
+
+    /// Returns true if this is the last response in a series of resposnes
+    /// (aka, the header identifies as Done)
+    pub fn is_last(&self) -> bool {
+        self.header.nlmsg_type == NlMsgType::Done
     }
 }

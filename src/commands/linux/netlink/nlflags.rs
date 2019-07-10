@@ -1,9 +1,7 @@
 //! All flags for NETLINK messages
 
-pub trait AsFlag {
-    fn as_flag(&self) -> u16;
-}
-
+/// Gerenic NETLINK flags
+#[allow(dead_code)]
 pub enum NlFlag {
     /// Denotes a request message.  Required for all requests
     Request = 0x01,
@@ -24,6 +22,8 @@ pub enum NlFlag {
     DumpFiltered = 0x20,
 }
 
+/// NETLINK flags specific to GET reqeusts
+#[allow(dead_code)]
 pub enum NlGetFlag {
     /// Specify tree root (aka retreive all)
     Root = 0x100,
@@ -38,6 +38,8 @@ pub enum NlGetFlag {
     Atomic = 0x400,
 }
 
+/// NETLINK flags specific to NEW/CREATE reqeusts
+#[allow(dead_code)]
 pub enum NlNewFlags {
     /// Override/overwrite if already exists
     Replace = 0x100,
@@ -52,11 +54,15 @@ pub enum NlNewFlags {
     Append = 0x800,
 }
 
+/// NETLINK flags specific to DELETE reqeusts
+#[allow(dead_code)]
 pub enum NlDeleteFlags {
     /// Do not delete recursively
     NonRecursive = 0x100,
 }
 
+/// NETLINK flags specific to ACKNOWLEDGEMENT reqeusts
+#[allow(dead_code)]
 pub enum NlAckFlags {
     /// Request was capped
     Capped = 0x100,

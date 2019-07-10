@@ -1,34 +1,7 @@
 //! Enum convering what message types can be sent via a NETLINK socket
 
-// Flags Values
-//
-const NLM_F_REQUEST: u16 = 0x01; /* It is request message.     */
-const NLM_F_MULTI: u16 = 0x02; /* Multipart message, terminated by NLMSG_DONE */
-const NLM_F_ACK: u16 = 0x04; /* Reply with ack, with zero or error code */
-const NLM_F_ECHO: u16 = 0x08; /* Echo this request         */
-const NLM_F_DUMP_INTR: u16 = 0x10; /* Dump was inconsistent due to sequence change */
-const NLM_F_DUMP_FILTERED: u16 = 0x20; /* Dump was filtered as requested */
-
-/* Modifiers to GET request */
-const NLM_F_ROOT: u16 = 0x100; /* specify tree    root    */
-const NLM_F_MATCH: u16 = 0x200; /* return all matching    */
-const NLM_F_ATOMIC: u16 = 0x400; /* atomic GET        */
-const NLM_F_DUMP: u16 = (NLM_F_ROOT | NLM_F_MATCH);
-
-/* Modifiers to NEW request */
-const NLM_F_REPLACE: u16 = 0x100; /* Override existing        */
-const NLM_F_EXCL: u16 = 0x200; /* Do not touch, if it exists    */
-const NLM_F_CREATE: u16 = 0x400; /* Create, if it does not exist    */
-const NLM_F_APPEND: u16 = 0x800; /* Add to end of list        */
-
-/* Modifiers to DELETE request */
-const NLM_F_NONREC: u16 = 0x100; /* Do not delete recursively    */
-
-/* Flags for ACK message */
-const NLM_F_CAPPED: u16 = 0x100; /* request was capped */
-const NLM_F_ACK_TLVS: u16 = 0x200; /* extended ACK TVLs were included */
-
 /// All messsage types that can be send to a AF_NETLINK socket
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum NlMsgType {
     /// When no message type was detected

@@ -1,7 +1,6 @@
 //! Support for sending netlink messages
 
 use log::debug;
-use netlink_sys::{Protocol, Socket};
 
 macro_rules! advance {
     ($v:expr, $a:expr) => {
@@ -50,18 +49,30 @@ macro_rules! flags {
 }
 
 mod nlflags;
-mod nlmsg;
 mod nlmsgheader;
 mod nlmsgtype;
-mod nlsocketdiag;
+mod nlrequest;
+mod nlresponse;
+mod nlsocket;
+pub mod types;
 
-pub use nlflags::{AsFlag, NlFlag, NlGetFlag};
-pub use nlmsg::{NlMessage, NlMsgPayload};
+pub use nlflags::{NlFlag, NlGetFlag};
 pub use nlmsgheader::NlMsgHeader;
 pub use nlmsgtype::NlMsgType;
-pub use nlsocketdiag::{AddressFamily, L4Protocol, NlINetDiagMsg, NlINetDiagReqV2};
+
+pub use nlrequest::NetlinkRequest;
+pub use nlresponse::{NetlinkResponse, NlResponsePayload};
+pub use nlsocket::{AddressFamily, L4Protocol, NetlinkFamily, NetlinkSocket};
 
 pub fn socket_test() {
+    let req = types::InternetSocketRequest::new();
+    let resps = req.send();
+
+    println!("{} Listen TCP IPv4 Sockets", resps.len());
+}
+
+/*
+pub fn socket_test2() {
     let s = Socket::new(Protocol::SockDiag).unwrap();
     let hdr = NlMsgHeader::new(NlMsgType::SockDiagByFamily, flags!(NlGetFlag::Dump));
     let inet = NlINetDiagReqV2::new(AddressFamily::Inet, L4Protocol::Tcp);
@@ -89,7 +100,7 @@ pub fn socket_test() {
     debug!("Recv: {:?}", buff);
 
     loop {
-        let msg = NlMessage::new(&mut buff);
+        let msg = NlResponse::new(&mut buff);
         if let Some(msg) = msg {
             if msg.header.nlmsg_type == NlMsgType::Done {
                 break;
@@ -101,3 +112,4 @@ pub fn socket_test() {
         }
     }
 }
+*/
