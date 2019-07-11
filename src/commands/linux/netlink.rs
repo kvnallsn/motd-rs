@@ -54,7 +54,7 @@ mod nlmsgtype;
 mod nlrequest;
 mod nlresponse;
 mod nlsocket;
-pub mod types;
+mod types;
 
 pub use nlflags::{NlFlag, NlGetFlag};
 pub use nlmsgheader::NlMsgHeader;
@@ -64,11 +64,26 @@ pub use nlrequest::NetlinkRequest;
 pub use nlresponse::{NetlinkResponse, NlResponsePayload};
 pub use nlsocket::{AddressFamily, L4Protocol, NetlinkFamily, NetlinkSocket};
 
+pub use types::sockdiag;
+
+fn to_bytes<T>(t: &T) -> &[u8] {
+    let p: *const T = t;
+    let p = p as *const u8;
+
+    unsafe { std::slice::from_raw_parts(p, std::mem::size_of::<T>()) }
+}
+
 pub fn socket_test() {
+    /*
     let req = types::InternetSocketRequest::new();
     let resps = req.send();
 
     println!("{} Listen TCP IPv4 Sockets", resps.len());
+    */
+    let req = sockdiag::unix::Request::new().attribute(sockdiag::unix::Attribute::ShowName);
+    let bytes = to_bytes(&req);
+    println!("{:?}", req);
+    println!("{:?}", bytes);
 }
 
 /*

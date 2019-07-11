@@ -1,6 +1,6 @@
 //! Unix socket related functions
 
-use super::super::{
+use crate::commands::linux::netlink::{
     AddressFamily, L4Protocol, NetlinkFamily, NetlinkRequest, NetlinkResponse, NetlinkSocket,
     NlGetFlag, NlMsgHeader, NlMsgType,
 };
@@ -9,16 +9,16 @@ use std::mem;
 /// Requests specific information about unix sockets
 #[repr(C)]
 #[derive(Clone, Debug)]
-pub struct UnixSocketRequest {
+pub struct Request {
     hdr: NlMsgHeader,
     msg: NlUnixDiagReq,
 }
 
-impl UnixSocketRequest {
+impl Request {
     /// Creates a new unix socket request that can be sent over
     /// a NETLINK socket
-    pub fn new() -> UnixSocketRequest {
-        let mut req = UnixSocketRequest {
+    pub fn new() -> Request {
+        let mut req = Request {
             hdr: NlMsgHeader::new(
                 NlMsgType::SockDiagByFamily,
                 flags!(NlGetFlag::Dump),
@@ -35,7 +35,7 @@ impl UnixSocketRequest {
     /// # Arguments
     ///
     /// * `s` - Attribute to add to request
-    pub fn attribute(mut self, attr: UnixDiagState) -> UnixSocketRequest {
+    pub fn attribute(mut self, attr: Attribute) -> Request {
         self.msg.show |= attr.as_u32();
         self
     }
@@ -45,14 +45,14 @@ impl UnixSocketRequest {
     /// # Arguments
     ///
     /// v - Vector of different attribtes/information to return
-    pub fn attributes(mut self, v: Vec<UnixDiagState>) -> UnixSocketRequest {
+    pub fn attributes(mut self, v: Vec<Attribute>) -> Request {
         self.msg.show |= v.iter().fold(0, |acc, s| acc | s.as_u32());
         self
     }
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum UnixDiagState {
+pub enum Attribute {
     ShowName = 0x01 as isize,
     ShowVfs = 0x02 as isize,
     ShowPeer = 0x04 as isize,
@@ -62,22 +62,22 @@ pub enum UnixDiagState {
     Shutdown = 0x21 as isize,
 }
 
-impl UnixDiagState {
+impl Attribute {
     pub fn as_u32(&self) -> u32 {
         *self as u32
     }
 }
 
-impl From<u32> for UnixDiagState {
-    fn from(u: u32) -> UnixDiagState {
+impl From<u32> for Attribute {
+    fn from(u: u32) -> Attribute {
         match u {
-            0x01 => UnixDiagState::ShowName,
-            0x02 => UnixDiagState::ShowVfs,
-            0x04 => UnixDiagState::ShowPeer,
-            0x08 => UnixDiagState::ShowIcons,
-            0x10 => UnixDiagState::ShowRQLen,
-            0x20 => UnixDiagState::ShowMemInfo,
-            0x21 => UnixDiagState::Shutdown,
+            0x01 => Attribute::ShowName,
+            0x02 => Attribute::ShowVfs,
+            0x04 => Attribute::ShowPeer,
+            0x08 => Attribute::ShowIcons,
+            0x10 => Attribute::ShowRQLen,
+            0x20 => Attribute::ShowMemInfo,
+            0x21 => Attribute::Shutdown,
             _ => panic!("Unknown State"),
         }
     }
@@ -119,6 +119,35 @@ struct NlUnixDiagReq {
     /// specify and individual socket. Ignored when querying for a list,
     /// or when set to [-1, -1]
     cookie: [u32; 2],
+}
+
+/// Response from submitting an NlUnixDiagReq message
+#[derive(Clone, Debug)]
+pub struct Response {
+    family: AddressFamily,
+    ty: u8,
+    state: u8,
+    pad: u8,
+    ino: u32,
+    cookie: [u32; 2],
+}
+
+impl Response {
+    /// Creates a new response, extracting values from a buffer `v`
+    ///
+    /// # Arguments
+    ///
+    /// * `v` - Buffer to build response from
+    pub fn new(v: &mut Vec<u8>) -> Response {
+        Response {
+            family: AddressFamily::from(u8!(v)),
+            ty: u8!(v),
+            state: u8!(v),
+            pad: u8!(v),
+            ino: u32!(v),
+            cookie: [u32!(v), u32!(v)],
+        }
+    }
 }
 
 impl std::default::Default for NlUnixDiagReq {

@@ -1,6 +1,6 @@
 //! All sockdiag(7) related functions and structs
 
-use super::super::{
+use crate::commands::linux::netlink::{
     AddressFamily, L4Protocol, NetlinkFamily, NetlinkRequest, NetlinkResponse, NetlinkSocket,
     NlGetFlag, NlMsgHeader, NlMsgType,
 };
@@ -11,9 +11,9 @@ use std::{
 
 /// Public facing struct to request internet socket (aka TCP, UDP, etc.)
 /// socket information
-pub struct InternetSocketRequest(NlMsgHeader, NlINetDiagReqV2);
+pub struct Request(NlMsgHeader, NlINetDiagReqV2);
 
-impl InternetSocketRequest {
+impl Request {
     /// Creates a new request to return information about internet sockets
     /// (TCP, UDP, and UDPLITE) on this machine.
     ///
@@ -21,8 +21,8 @@ impl InternetSocketRequest {
     ///     AddressFamily: Inet (i.e., IPv4)
     ///     L4Protocol: TCP
     ///     Socket State: LISTEN
-    pub fn new() -> InternetSocketRequest {
-        InternetSocketRequest(
+    pub fn new() -> Request {
+        Request(
             NlMsgHeader::new(NlMsgType::SockDiagByFamily, flags!(NlGetFlag::Dump), 56),
             NlINetDiagReqV2::default(),
         )
@@ -61,7 +61,7 @@ impl InternetSocketRequest {
     }
 }
 
-impl NetlinkRequest for InternetSocketRequest {
+impl NetlinkRequest for Request {
     /// Builds a message as an vector of bytes
     fn build(self) -> Vec<u8> {
         let mut hdr = self.0;
@@ -82,6 +82,7 @@ impl NetlinkRequest for InternetSocketRequest {
 
 /// An Internet (INet) Diagnostics request.  Returns all information
 /// regarding IPv4 and IPv6 sockets on this computer
+#[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct NlINetDiagReqV2 {
     /// This should be set to either AF_INET or AF_INET6 for IPv4 or
@@ -146,6 +147,7 @@ impl NlINetDiagReqV2 {
 
 /// The internet socket connection information, including source
 /// and destination ports and IP addresses
+#[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct NlINetDiagSockId {
     /// The source port (big endian)
@@ -256,7 +258,7 @@ impl NlINetDiagSockId {
 
 /// Response to a INet socket request message
 #[derive(Clone, Debug)]
-pub struct InternetSocketResponse {
+pub struct Response {
     idiag_family: AddressFamily,
     idiag_state: u8,
     idiag_time: u8,
@@ -269,12 +271,12 @@ pub struct InternetSocketResponse {
     idiag_inode: u32,
 }
 
-impl InternetSocketResponse {
-    pub fn new(hdr: &NlMsgHeader, v: &mut Vec<u8>) -> InternetSocketResponse {
+impl Response {
+    pub fn new(v: &mut Vec<u8>) -> Response {
         let sz = mem::size_of::<Self>();
         let mut b: Vec<u8> = v.drain(0..sz).collect();
 
-        let mut msg = InternetSocketResponse {
+        let mut msg = Response {
             idiag_family: AddressFamily::Unknown,
             idiag_state: 0,
             idiag_time: 0,

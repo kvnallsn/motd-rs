@@ -1,6 +1,6 @@
 //! The overall NETLINK message container
 
-use super::{types, NlMsgHeader, NlMsgType};
+use crate::commands::linux::netlink::{types::sockdiag, NlMsgHeader, NlMsgType};
 use std::mem;
 
 /// A payload (or defined request type) to embed in the NETLINK message
@@ -10,7 +10,7 @@ pub enum NlResponsePayload {
     None,
 
     /// Socket Diagnostic Response
-    SockDiag(types::InternetSocketResponse),
+    SockDiag(sockdiag::Response),
 }
 
 /// Container to hold a message received from the system
@@ -46,9 +46,9 @@ impl NetlinkResponse {
             let mut data = v.drain(0..sz).collect();
 
             let payload = match header.msg_type() {
-                NlMsgType::SockDiagByFamily => NlResponsePayload::SockDiag(
-                    types::InternetSocketResponse::new(&header, &mut data),
-                ),
+                NlMsgType::SockDiagByFamily => {
+                    NlResponsePayload::SockDiag(sockdiag::Response::new(&mut data))
+                }
                 _ => NlResponsePayload::None,
             };
 
