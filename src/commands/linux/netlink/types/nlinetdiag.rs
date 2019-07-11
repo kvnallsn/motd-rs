@@ -23,7 +23,7 @@ impl InternetSocketRequest {
     ///     Socket State: LISTEN
     pub fn new() -> InternetSocketRequest {
         InternetSocketRequest(
-            NlMsgHeader::new(NlMsgType::SockDiagByFamily, flags!(NlGetFlag::Dump)),
+            NlMsgHeader::new(NlMsgType::SockDiagByFamily, flags!(NlGetFlag::Dump), 56),
             NlINetDiagReqV2::default(),
         )
     }

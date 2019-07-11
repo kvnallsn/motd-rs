@@ -45,7 +45,7 @@ impl NetlinkResponse {
             let sz = payload_sz - mem::size_of::<NlMsgHeader>();
             let mut data = v.drain(0..sz).collect();
 
-            let payload = match header.nlmsg_type {
+            let payload = match header.msg_type() {
                 NlMsgType::SockDiagByFamily => NlResponsePayload::SockDiag(
                     types::InternetSocketResponse::new(&header, &mut data),
                 ),
@@ -65,6 +65,6 @@ impl NetlinkResponse {
     /// Returns true if this is the last response in a series of resposnes
     /// (aka, the header identifies as Done)
     pub fn is_last(&self) -> bool {
-        self.header.nlmsg_type == NlMsgType::Done
+        self.header.msg_type() == NlMsgType::Done
     }
 }
