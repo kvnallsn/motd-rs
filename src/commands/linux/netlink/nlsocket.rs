@@ -1,5 +1,6 @@
 //! Rust wrapper around libc socket, send/recv
 
+use crate::commands::linux::netlink::NetlinkRequest;
 use std::{io::Error, ops::Drop, os::unix::io::RawFd};
 
 /// Don't send any flags
@@ -93,10 +94,20 @@ impl NetlinkSocket {
         }
     }
 
-    /// Sends a message through the opened socket, returning the number of bytes read
-    pub fn send(&self, buffer: &[u8]) -> Result<usize, Error> {
-        let len = buffer.len();
-        let sent = unsafe { libc::send(self.0, buffer.as_ptr() as *const _, len as usize, FLAGS) };
+    /// Sends a message through the opened socket, returning the number of bytes read.
+    /// The parameter `msg` must implement NetlinkRequest and it *must* have the
+    /// #[repr(C)] attribute.  A reference to the struct will be cast as c_void ptr
+    /// and then passed to send() in an unsafe call.  If the structure of `msg` does
+    /// not exactly match the structure in the appropriate manpage then the call will
+    /// most likely fail
+    ///
+    /// # Arguments
+    ///
+    /// * `msg` - A struct that implements a NetlinkRequest
+    pub fn send<M: NetlinkRequest>(&self, msg: &M) -> Result<usize, Error> {
+        let len = std::mem::size_of::<M>();
+        let buffer: *const M = msg;
+        let sent = unsafe { libc::send(self.0, buffer as *const _, len as usize, FLAGS) };
 
         if sent < 0 {
             Err(Error::last_os_error())

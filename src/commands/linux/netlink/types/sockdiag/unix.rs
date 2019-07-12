@@ -1,8 +1,8 @@
 //! Unix socket related functions
 
 use crate::commands::linux::netlink::{
-    AddressFamily, L4Protocol, NetlinkFamily, NetlinkRequest, NetlinkResponse, NetlinkSocket,
-    NlGetFlag, NlMsgHeader, NlMsgType,
+    AddressFamily, NetlinkFamily, NetlinkRequest, NetlinkResponse, NetlinkSocket, NlGetFlag,
+    NlMsgHeader, NlMsgType,
 };
 use std::mem;
 
@@ -48,6 +48,13 @@ impl Request {
     pub fn attributes(mut self, v: Vec<Attribute>) -> Request {
         self.msg.show |= v.iter().fold(0, |acc, s| acc | s.as_u32());
         self
+    }
+}
+
+impl NetlinkRequest for Request {
+    /// Returns the family/kernel module to use for this request
+    fn family(&self) -> NetlinkFamily {
+        NetlinkFamily::SockDiag
     }
 }
 

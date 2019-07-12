@@ -84,6 +84,21 @@ pub fn socket_test() {
     let bytes = to_bytes(&req);
     println!("{:?}", req);
     println!("{:?}", bytes);
+    println!("Bytes Length: {}", bytes.len());
+
+    let resps = req.send();
+    println!("{:?}", resps);
+
+    println!("-----------------------------------------");
+
+    let req = sockdiag::inet::Request::new();
+    let bytes = to_bytes(&req);
+    println!("{:?}", req);
+    println!("{:?}", bytes);
+    println!("Bytes Length: {}", bytes.len());
+
+    let resps = req.send();
+    println!("{:?}", resps);
 }
 
 /*

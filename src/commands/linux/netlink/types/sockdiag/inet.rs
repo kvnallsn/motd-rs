@@ -11,6 +11,7 @@ use std::{
 
 /// Public facing struct to request internet socket (aka TCP, UDP, etc.)
 /// socket information
+#[derive(Clone, Debug)]
 pub struct Request(NlMsgHeader, NlINetDiagReqV2);
 
 impl Request {
@@ -36,7 +37,7 @@ impl Request {
     ///
     /// * `family` - Address family for this request
     pub fn address_family(mut self, family: AddressFamily) -> Self {
-        self.1.sdiag_family = family;
+        self.1.sdiag_family = family as u8;
         self
     }
 
@@ -49,7 +50,7 @@ impl Request {
     ///
     /// * `proto` - Layer 4 protocol for this request
     pub fn protocol(mut self, proto: L4Protocol) -> Self {
-        self.1.sdiag_protocol = proto;
+        self.1.sdiag_protocol = proto as u8;
         self
     }
 
@@ -62,18 +63,6 @@ impl Request {
 }
 
 impl NetlinkRequest for Request {
-    /// Builds a message as an vector of bytes
-    fn build(self) -> Vec<u8> {
-        let mut hdr = self.0;
-        let payload = self.1;
-
-        // expected size of header + NlINetDiagReqV2
-        hdr.nlmsg_len = 72;
-        let mut msg = hdr.to_vec();
-        msg.append(&mut payload.to_vec());
-        msg
-    }
-
     /// Returns the family/kernel module to use for this request
     fn family(&self) -> NetlinkFamily {
         NetlinkFamily::SockDiag
@@ -87,10 +76,10 @@ impl NetlinkRequest for Request {
 pub struct NlINetDiagReqV2 {
     /// This should be set to either AF_INET or AF_INET6 for IPv4 or
     /// IPv6 sockets respectively.
-    sdiag_family: AddressFamily,
+    sdiag_family: u8,
 
     /// What network protocol to inspect (TCP, UDP, or UDPLITE)
-    sdiag_protocol: L4Protocol,
+    sdiag_protocol: u8,
 
     /// Set of flags defining what kind of extended information to report
     /// See sock_diag(7)
@@ -109,18 +98,43 @@ pub struct NlINetDiagReqV2 {
     /// response.  Unlike UNIX domain sockets, IPv4 and IPv6 sockets
     /// are identified using addresses and ports.  All
     /// values are in network byte order network byte order
-    id: NlINetDiagSockId,
+    /// The source port (big endian)
+    idiag_sport: u16,
+
+    /// The destination port (big endian)
+    idiag_dport: u16,
+
+    /// The source address (big endian)
+    idiag_src: [u32; 4],
+
+    /// The destination address (big endian)
+    idiag_dst: [u32; 4],
+
+    /// The interface number the socket is bound to
+    idiag_if: u32,
+
+    /// This is an array of opaque identifiers that could be used
+    /// along with other fields of this structure to specify an indi‐
+    /// vidual socket.  It is ignored when querying for a list of
+    /// sockets, as well as when all its elements are set
+    /// to -1.
+    idiag_cookie: [u32; 2],
 }
 
 impl std::default::Default for NlINetDiagReqV2 {
     fn default() -> NlINetDiagReqV2 {
         NlINetDiagReqV2 {
-            sdiag_family: AddressFamily::Inet,
-            sdiag_protocol: L4Protocol::Tcp,
+            sdiag_family: AddressFamily::Inet as u8,
+            sdiag_protocol: L4Protocol::Tcp as u8,
             idiag_ext: 0,
             pad: 0,
             idiag_states: (1 << 10), // LISTEN only
-            id: NlINetDiagSockId::default(),
+            idiag_sport: 0,
+            idiag_dport: 0,
+            idiag_src: [0, 0, 0, 0],
+            idiag_dst: [0, 0, 0, 0],
+            idiag_if: 0,
+            idiag_cookie: [0, 2],
         }
     }
 }
@@ -128,8 +142,8 @@ impl std::default::Default for NlINetDiagReqV2 {
 impl NlINetDiagReqV2 {
     pub fn new(family: AddressFamily, protocol: L4Protocol) -> NlINetDiagReqV2 {
         let mut req = NlINetDiagReqV2::default();
-        req.sdiag_family = family;
-        req.sdiag_protocol = protocol;
+        req.sdiag_family = family as u8;
+        req.sdiag_protocol = protocol as u8;
         req
     }
 
@@ -140,7 +154,7 @@ impl NlINetDiagReqV2 {
         vec.push(self.idiag_ext);
         vec.push(self.pad);
         vec.extend_from_slice(&self.idiag_states.to_le_bytes());
-        vec.append(&mut self.id.to_vec());
+        //vec.append(&mut self.id.to_vec());
         vec
     }
 }

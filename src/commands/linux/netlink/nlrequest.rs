@@ -8,10 +8,6 @@ use super::{NetlinkFamily, NetlinkResponse, NetlinkSocket};
 /// `family()` function.  Similarly, build will build a complete message request to send
 /// down the NETLINK socket.
 pub trait NetlinkRequest: Sized {
-    /// Turns a NETLINK request into a message than can be sent
-    /// out via a NETLINK socket
-    fn build(self) -> Vec<u8>;
-
     /// Returns an instance of the NETLINK family this message is intended
     /// to communicate with.  For example, to get internet socket statistics,
     /// we need to use the `NetlinkFamily::SockDiag` family.  For routing, we
@@ -21,14 +17,13 @@ pub trait NetlinkRequest: Sized {
     /// Sends a given message over a new NETLINK socket and parses the response
     /// into a NetlinkResponse struct.  Then returns vector of all responses received,
     /// not including the done response
-    fn send(self) -> Vec<NetlinkResponse> {
+    fn send(&self) -> Vec<NetlinkResponse> {
         // Create a netlink socket
         let socket =
             NetlinkSocket::new(self.family()).expect("failed to open netlink socket, exiting");
 
         // Send our message through the socket
-        let msg = self.build();
-        let sent = socket.send(&msg).expect("failed to send message!");
+        let sent = socket.send(self).expect("failed to send message!");
 
         let mut responses: Vec<NetlinkResponse> = Vec::new();
 
