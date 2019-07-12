@@ -163,7 +163,7 @@ impl std::default::Default for NlUnixDiagReq {
             family: AddressFamily::Unix as u8,
             protocol: 0,
             pad: 0,
-            states: 0,
+            states: 0xffffffff,
             ino: 0,
             show: 0,
             cookie: [0, 0],
