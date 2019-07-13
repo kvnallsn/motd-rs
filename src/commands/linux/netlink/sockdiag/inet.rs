@@ -15,20 +15,64 @@ use std::{
 #[derive(Clone, Copy, Debug)]
 pub enum Protocol {
     /// Transmission Control Protocol
-    Tcp = 0x06,
+    Tcp = libc::IPPROTO_TCP as isize,
 
     /// User Datagaram Protocol
-    Udp = 0x11,
+    Udp = libc::IPPROTO_UDP as isize,
 
     /// User Datagaram Protocol Lite
-    UdpLite = 136,
+    UdpLite = libc::IPPROTO_UDPLITE as isize,
+}
+
+/// Various TCP states that a socket can be in
+pub enum SocketState {
+    Established,
+    SynSent,
+    SynRecv,
+    FinWait1,
+    FinWait2,
+    TimeWait,
+    Close,
+    CloseWait,
+    LastAck,
+    Listen,
+    Closing,
+    NewSynRecv,
+}
+
+impl SocketState {
+    /// Returns this enum as a 32-bit representation
+    pub fn as_u32(&self) -> u32 {
+        match self {
+            SocketState::Established => 0x01,
+            SocketState::SynSent => 0x02,
+            SocketState::SynRecv => 0x03,
+            SocketState::FinWait1 => 0x04,
+            SocketState::FinWait2 => 0x05,
+            SocketState::TimeWait => 0x06,
+            SocketState::Close => 0x07,
+            SocketState::CloseWait => 0x08,
+            SocketState::LastAck => 0x09,
+            SocketState::Listen => 0x0A,
+            SocketState::Closing => 0xB,
+            SocketState::NewSynRecv => 0x0C,
+        }
+    }
+
+    /// Return this state in flag form
+    pub fn as_flag(&self) -> u32 {
+        1 << self.as_u32()
+    }
 }
 
 /// Public facing struct to request internet socket (aka TCP, UDP, etc.)
 /// socket information
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
-pub struct Request(Header, NlINetDiagReqV2);
+pub struct Request {
+    hdr: Header,
+    msg: NlINetDiagReqV2,
+}
 
 impl Request {
     /// Creates a new request to return information about internet sockets
@@ -37,11 +81,22 @@ impl Request {
     /// Defaults to:
     ///     AddressFamily: Inet (i.e., IPv4)
     ///     Protocol: TCP
-    ///     Socket State: LISTEN
+    ///     Socket State: None
     pub fn new() -> Request {
         let hdr = Header::new(MessageType::SockDiagByFamily, 56).flag(Flag::Dump);
 
-        Request(hdr, NlINetDiagReqV2::default())
+        Request {
+            hdr,
+            msg: NlINetDiagReqV2::default(),
+        }
+    }
+
+    /// Sets the states the sockets must be in.  Valid states are:
+    /// * `LISTEN`
+    /// * `CONNECTION_ESTABLISHED`
+    pub fn socket_state(mut self, state: SocketState) -> Self {
+        self.msg.idiag_states |= state.as_flag();
+        self
     }
 
     /// Sets the address family for this request.  Valid options are:
@@ -52,7 +107,7 @@ impl Request {
     ///
     /// * `family` - Address family for this request
     pub fn address_family(mut self, family: AddressFamily) -> Self {
-        self.1.sdiag_family = family as u8;
+        self.msg.sdiag_family = family as u8;
         self
     }
 
@@ -65,14 +120,7 @@ impl Request {
     ///
     /// * `proto` - Layer 4 protocol for this request
     pub fn protocol(mut self, proto: Protocol) -> Self {
-        self.1.sdiag_protocol = proto as u8;
-        self
-    }
-
-    /// Sets the states the sockets must be in.  Valid states are:
-    /// * `LISTEN`
-    /// * `CONNECTION_ESTABLISHED`
-    pub fn socket_state(self) -> Self {
+        self.msg.sdiag_protocol = proto as u8;
         self
     }
 }
@@ -144,7 +192,7 @@ impl std::default::Default for NlINetDiagReqV2 {
             sdiag_protocol: Protocol::Tcp as u8,
             idiag_ext: 0,
             pad: 0,
-            idiag_states: (1 << 10), // LISTEN only
+            idiag_states: 0,
             idiag_sport: 0,
             idiag_dport: 0,
             idiag_src: [0, 0, 0, 0],
