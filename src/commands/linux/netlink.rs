@@ -1,7 +1,5 @@
 //! Support for sending netlink messages
 
-use log::debug;
-
 macro_rules! advance {
     ($v:expr, $a:expr) => {
         $v.drain(0..$a).collect::<Vec<u8>>()
@@ -66,6 +64,8 @@ pub use nlsocket::{AddressFamily, L4Protocol, NetlinkFamily, NetlinkSocket};
 
 pub use types::sockdiag;
 
+use log::{debug, info};
+
 fn examine_bytes<T>(t: &T) {
     let b = to_bytes(t);
     print_bytes(b);
@@ -79,23 +79,25 @@ fn to_bytes<T>(t: &T) -> &[u8] {
 }
 
 fn print_bytes(b: &[u8]) {
-    println!("-----------------------------------------");
+    debug!("---------------------------------------");
 
+    let mut s = String::new();
     let mut i: usize = 0;
     while i < b.len() {
-        print!("0x{:02x} ", b[i]);
+        s.push_str(&format!("0x{:02x} ", b[i]));
 
         i += 1;
         if i % 8 == 0 {
-            print!("\n");
+            debug!("{}", s);
+            s.clear();
         }
     }
 
     if i % 8 != 0 {
-        print!("\n");
+        debug!("\n");
     }
 
-    println!("-----------------------------------------");
+    debug!("---------------------------------------");
 }
 
 pub fn socket_test() {
@@ -103,7 +105,6 @@ pub fn socket_test() {
     let req = types::InternetSocketRequest::new();
     let resps = req.send();
 
-    println!("{} Listen TCP IPv4 Sockets", resps.len());
     */
     let req = sockdiag::unix::Request::new().attributes(vec![
         sockdiag::unix::RequestAttribute::ShowName,
@@ -114,58 +115,15 @@ pub fn socket_test() {
         sockdiag::unix::RequestAttribute::ShowMemInfo,
     ]);
     examine_bytes(&req);
-    println!("{:#?}", req);
+    debug!("{:#?}", req);
 
     let resps = req.send();
-    println!("{:#?}", resps);
+    debug!("{:#?}", resps);
 
-    println!("-----------------------------------------");
+    debug!("-----------------------------------------");
 
     let req = sockdiag::inet::Request::new();
     examine_bytes(&req);
     let resps = req.send();
-    println!("# TCPv4 Listen: {}", resps.len());
+    info!("# TCPv4 Listen: {}", resps.len());
 }
-
-/*
-pub fn socket_test2() {
-    let s = Socket::new(Protocol::SockDiag).unwrap();
-    let hdr = NlMsgHeader::new(NlMsgType::SockDiagByFamily, flags!(NlGetFlag::Dump));
-    let inet = NlINetDiagReqV2::new(AddressFamily::Inet, L4Protocol::Tcp);
-
-    debug!("{:?}", hdr);
-    debug!("{:?}", inet);
-
-    let msg = hdr.build(inet);
-    debug!("{:?}", msg.len());
-
-    let err = s.send(&msg, 0);
-    match err {
-        Ok(b) => debug!("Success: Sent {} bytes", b),
-        Err(e) => panic!("Failed to send msg: {}", e),
-    }
-
-    let mut buff = vec![0u8; 16384];
-    let err = s.recv(&mut buff, 0);
-    match err {
-        Ok(b) => debug!("Success: Recv {} bytes", b),
-        Err(e) => panic!("Failed to recv msg: {}", e),
-    }
-
-    // break into types (iter?)
-    debug!("Recv: {:?}", buff);
-
-    loop {
-        let msg = NlResponse::new(&mut buff);
-        if let Some(msg) = msg {
-            if msg.header.nlmsg_type == NlMsgType::Done {
-                break;
-            }
-
-            println!("{:?}", msg);
-        } else {
-            break;
-        }
-    }
-}
-*/
