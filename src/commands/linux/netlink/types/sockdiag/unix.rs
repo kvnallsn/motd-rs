@@ -1,8 +1,8 @@
 //! Unix socket related functions
 
 use crate::commands::linux::netlink::{
-    AddressFamily, NetlinkFamily, NetlinkRequest, NetlinkResponse, NetlinkSocket, NlGetFlag,
-    NlMsgHeader, NlMsgType,
+    AddressFamily, NetlinkAttribute, NetlinkFamily, NetlinkRequest, NetlinkResponse, NetlinkSocket,
+    NlGetFlag, NlMsgHeader, NlMsgType,
 };
 use std::mem;
 
@@ -30,12 +30,12 @@ impl Request {
         req
     }
 
-    /// Sets an attribute to respond with on the request
+    /// Sets an RequestAttribute to respond with on the request
     ///
     /// # Arguments
     ///
-    /// * `s` - Attribute to add to request
-    pub fn attribute(mut self, attr: Attribute) -> Request {
+    /// * `s` - RequestAttribute to add to request
+    pub fn attribute(mut self, attr: RequestAttribute) -> Request {
         self.msg.show |= attr.as_u32();
         self
     }
@@ -45,7 +45,7 @@ impl Request {
     /// # Arguments
     ///
     /// v - Vector of different attribtes/information to return
-    pub fn attributes(mut self, v: Vec<Attribute>) -> Request {
+    pub fn attributes(mut self, v: Vec<RequestAttribute>) -> Request {
         self.msg.show |= v.iter().fold(0, |acc, s| acc | s.as_u32());
         self
     }
@@ -58,33 +58,44 @@ impl NetlinkRequest for Request {
     }
 }
 
+/// Represents an attribute than be added to a given request, returning
+/// the requested information in a NETLINK attribute (rtattr) Structure
 #[derive(Clone, Copy, Debug)]
-pub enum Attribute {
+pub enum RequestAttribute {
+    /// Show name of socket (not path)
     ShowName = 0x01 as isize,
+
+    /// Show VFS (Virtual File System) inode information
     ShowVfs = 0x02 as isize,
+
+    /// Show peer socket information
     ShowPeer = 0x04 as isize,
+
+    /// Show pending connections,
     ShowIcons = 0x08 as isize,
+
+    /// Show skb receive queue length
     ShowRQLen = 0x10 as isize,
+
+    /// Show memory info of a socket
     ShowMemInfo = 0x20 as isize,
-    Shutdown = 0x21 as isize,
 }
 
-impl Attribute {
+impl RequestAttribute {
     pub fn as_u32(&self) -> u32 {
         *self as u32
     }
 }
 
-impl From<u32> for Attribute {
-    fn from(u: u32) -> Attribute {
+impl From<u32> for RequestAttribute {
+    fn from(u: u32) -> RequestAttribute {
         match u {
-            0x01 => Attribute::ShowName,
-            0x02 => Attribute::ShowVfs,
-            0x04 => Attribute::ShowPeer,
-            0x08 => Attribute::ShowIcons,
-            0x10 => Attribute::ShowRQLen,
-            0x20 => Attribute::ShowMemInfo,
-            0x21 => Attribute::Shutdown,
+            0x01 => RequestAttribute::ShowName,
+            0x02 => RequestAttribute::ShowVfs,
+            0x04 => RequestAttribute::ShowPeer,
+            0x08 => RequestAttribute::ShowIcons,
+            0x10 => RequestAttribute::ShowRQLen,
+            0x20 => RequestAttribute::ShowMemInfo,
             _ => panic!("Unknown State"),
         }
     }
@@ -128,35 +139,6 @@ struct NlUnixDiagReq {
     cookie: [u32; 2],
 }
 
-/// Response from submitting an NlUnixDiagReq message
-#[derive(Clone, Debug)]
-pub struct Response {
-    family: AddressFamily,
-    ty: u8,
-    state: u8,
-    pad: u8,
-    ino: u32,
-    cookie: [u32; 2],
-}
-
-impl Response {
-    /// Creates a new response, extracting values from a buffer `v`
-    ///
-    /// # Arguments
-    ///
-    /// * `v` - Buffer to build response from
-    pub fn new(v: &mut Vec<u8>) -> Response {
-        Response {
-            family: AddressFamily::from(u8!(v)),
-            ty: u8!(v),
-            state: u8!(v),
-            pad: u8!(v),
-            ino: u32!(v),
-            cookie: [u32!(v), u32!(v)],
-        }
-    }
-}
-
 impl std::default::Default for NlUnixDiagReq {
     fn default() -> NlUnixDiagReq {
         NlUnixDiagReq {
@@ -168,5 +150,155 @@ impl std::default::Default for NlUnixDiagReq {
             show: 0,
             cookie: [0, 0],
         }
+    }
+}
+
+/// All possible attributes that can appear in a unix socket response
+#[doc(hidden)]
+const RESP_ATTR_NAME: u16 = 0x00;
+const RESP_ATTR_VFS: u16 = 0x01;
+const RESP_ATTR_PEER: u16 = 0x02;
+const RESP_ATTR_ICONS: u16 = 0x03;
+const RESP_ATTR_RQLEN: u16 = 0x04;
+const RESP_ATTR_MEMINFO: u16 = 0x05;
+const RESP_ATTR_SHUTDOWN: u16 = 0x06;
+
+/// Response from submitting an NlUnixDiagReq message
+#[derive(Clone, Debug)]
+pub struct Response {
+    /// Address family this socket belongs to (should be Unix)
+    family: AddressFamily,
+
+    ty: u8,
+    state: u8,
+    pad: u8,
+    ino: u32,
+    cookie: [u32; 2],
+
+    // attributes are below here
+    /// Pathname to which this socket is bound
+    name: Option<String>,
+
+    /// Virtual file system information
+    vfs: Option<Vfs>,
+
+    /// inode associated with this socket's peer
+    /// only reported for connected sockets
+    peer: Option<u32>,
+
+    /// Read and write queue information
+    queue: Option<Queue>,
+
+    /// Internal shutdown state of socket
+    shutdown: Option<u8>,
+}
+
+impl Response {
+    /// Creates a new response, extracting values from a buffer `v`
+    ///
+    /// # Arguments
+    ///
+    /// * `v` - Buffer to build response from
+    pub fn new(v: &mut Vec<u8>) -> Response {
+        let mut resp = Response {
+            family: AddressFamily::from(u8!(v)),
+            ty: u8!(v),
+            state: u8!(v),
+            pad: u8!(v),
+            ino: u32!(v),
+            cookie: [u32!(v), u32!(v)],
+
+            // Initialze all attributes to None by default
+            name: None,
+            vfs: None,
+            peer: None,
+            queue: None,
+            shutdown: None,
+        };
+
+        while let Some(mut attr) = NetlinkAttribute::new(v) {
+            if attr.ty == RESP_ATTR_NAME {
+                // Name Attribute
+
+                // consumes the NULL byte on the end
+                let _ = attr.data.pop();
+
+                // Converts a cstring into a Rust String
+                if let Ok(cstr) = std::ffi::CString::new(attr.data) {
+                    resp.name = cstr.into_string().ok();
+                }
+            } else if attr.ty == RESP_ATTR_VFS {
+                if attr.data.len() >= 8 {
+                    resp.vfs = Some(Vfs::new(u32!(attr.data), u32!(attr.data)));
+                }
+            } else if attr.ty == RESP_ATTR_PEER {
+                if attr.data.len() >= 4 {
+                    resp.peer = Some(u32!(attr.data));
+                }
+            } else if attr.ty == RESP_ATTR_ICONS {
+            } else if attr.ty == RESP_ATTR_RQLEN {
+                if attr.data.len() >= 8 {
+                    resp.queue = Some(Queue::new(u32!(attr.data), u32!(attr.data)));
+                }
+            } else if attr.ty == RESP_ATTR_MEMINFO {
+            } else if attr.ty == RESP_ATTR_SHUTDOWN {
+                // Shutdown State
+                resp.shutdown = Some(u8!(attr.data));
+            }
+        }
+
+        resp
+    }
+}
+
+/// Virtual File System information about this Unix socket
+#[derive(Clone, Debug)]
+pub struct Vfs {
+    /// The device number of the corresponding on-disk socket inode
+    pub device_number: u32,
+
+    /// The inode number of the corresponding on-disk seocket inode
+    pub inode: u32,
+}
+
+impl Vfs {
+    /// Creates a new VFS structure with the provided information
+    ///
+    /// # Arguments
+    ///
+    /// * `dev` - device number
+    /// * `inode` - inode Number
+    pub fn new(dev: u32, inode: u32) -> Vfs {
+        Vfs {
+            device_number: dev,
+            inode,
+        }
+    }
+}
+
+/// Read and write queue information for listening and established sockets
+#[derive(Clone, Debug)]
+pub struct Queue {
+    /// For listening sockets: Number of pending connections
+    ///
+    /// For established sockets: Amount of data in incoming queue
+    pub read: u32,
+
+    /// For listening sockets: Backlog length wich equals the value
+    /// passed as the second argument to `listen(2)`
+    ///
+    /// For established sockets: Amount of memory available for sending
+    pub write: u32,
+}
+
+impl Queue {
+    /// Creates a new queue structe with the provided information
+    ///
+    /// # Arguments
+    ///
+    /// * `read` - See docs on read field
+    /// * `write` - See docs onw write field
+    pub fn new(read: u32, write: u32) -> Queue {
+        Queue { read, write }
     }
 }

@@ -61,16 +61,41 @@ pub use nlmsgheader::NlMsgHeader;
 pub use nlmsgtype::NlMsgType;
 
 pub use nlrequest::NetlinkRequest;
-pub use nlresponse::{NetlinkResponse, NlResponsePayload};
+pub use nlresponse::{NetlinkAttribute, NetlinkResponse, NlResponsePayload};
 pub use nlsocket::{AddressFamily, L4Protocol, NetlinkFamily, NetlinkSocket};
 
 pub use types::sockdiag;
+
+fn examine_bytes<T>(t: &T) {
+    let b = to_bytes(t);
+    print_bytes(b);
+}
 
 fn to_bytes<T>(t: &T) -> &[u8] {
     let p: *const T = t;
     let p = p as *const u8;
 
     unsafe { std::slice::from_raw_parts(p, std::mem::size_of::<T>()) }
+}
+
+fn print_bytes(b: &[u8]) {
+    println!("-----------------------------------------");
+
+    let mut i: usize = 0;
+    while i < b.len() {
+        print!("0x{:02x} ", b[i]);
+
+        i += 1;
+        if i % 8 == 0 {
+            print!("\n");
+        }
+    }
+
+    if i % 8 != 0 {
+        print!("\n");
+    }
+
+    println!("-----------------------------------------");
 }
 
 pub fn socket_test() {
@@ -80,25 +105,24 @@ pub fn socket_test() {
 
     println!("{} Listen TCP IPv4 Sockets", resps.len());
     */
-    let req = sockdiag::unix::Request::new().attribute(sockdiag::unix::Attribute::ShowName);
-    let bytes = to_bytes(&req);
-    println!("{:?}", req);
-    println!("{:?}", bytes);
-    println!("Bytes Length: {}", bytes.len());
+    let req = sockdiag::unix::Request::new().attributes(vec![
+        sockdiag::unix::RequestAttribute::ShowName,
+        sockdiag::unix::RequestAttribute::ShowVfs,
+        sockdiag::unix::RequestAttribute::ShowPeer,
+        sockdiag::unix::RequestAttribute::ShowRQLen,
+    ]);
+    examine_bytes(&req);
+    println!("{:#?}", req);
 
     let resps = req.send();
-    println!("{:?}", resps);
+    println!("{:#?}", resps);
 
     println!("-----------------------------------------");
 
     let req = sockdiag::inet::Request::new();
-    let bytes = to_bytes(&req);
-    println!("{:?}", req);
-    println!("{:?}", bytes);
-    println!("Bytes Length: {}", bytes.len());
-
+    examine_bytes(&req);
     let resps = req.send();
-    println!("{:?}", resps);
+    println!("# TCPv4 Listen: {}", resps.len());
 }
 
 /*
