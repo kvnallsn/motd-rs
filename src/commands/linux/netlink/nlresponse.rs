@@ -1,11 +1,14 @@
 //! The overall NETLINK message container
 
-use crate::commands::linux::netlink::{types::sockdiag, NlMsgHeader, NlMsgType};
+use crate::commands::linux::netlink::{
+    header::{Header, MessageType},
+    sockdiag,
+};
 use std::mem;
 
 /// A payload (or defined request type) to embed in the NETLINK message
 #[derive(Clone, Debug)]
-pub enum NlResponsePayload {
+pub enum Payload {
     /// No payload
     None,
 
@@ -17,10 +20,10 @@ pub enum NlResponsePayload {
 #[derive(Clone, Debug)]
 pub struct NetlinkResponse {
     /// Header, defining size and other characteristics
-    pub header: NlMsgHeader,
+    pub header: Header,
 
     /// The payload, wrapping the response information
-    pub payload: NlResponsePayload,
+    pub payload: Payload,
 }
 
 impl NetlinkResponse {
@@ -31,22 +34,21 @@ impl NetlinkResponse {
     ///
     /// * `v` - Vec to extract message from (and advance)
     pub fn new(v: &mut Vec<u8>) -> Option<NetlinkResponse> {
-        let hdr = NlMsgHeader::from_vec(v);
+        let hdr = Header::parse(v);
 
         if let Some(header) = hdr {
-            let payload_sz = header.nlmsg_len as usize;
-            if payload_sz < mem::size_of::<NlMsgHeader>() {
+            if header.size() < mem::size_of::<Header>() {
                 return None;
             }
 
-            let sz = payload_sz - mem::size_of::<NlMsgHeader>();
+            let sz = header.size() - mem::size_of::<Header>();
             let mut data = v.drain(0..sz).collect();
 
             let payload = match header.msg_type() {
-                NlMsgType::SockDiagByFamily => {
-                    NlResponsePayload::SockDiag(sockdiag::Response::new(&mut data))
+                MessageType::SockDiagByFamily => {
+                    Payload::SockDiag(sockdiag::Response::new(&mut data))
                 }
-                _ => NlResponsePayload::None,
+                _ => Payload::None,
             };
 
             Some(NetlinkResponse { header, payload })
@@ -58,7 +60,7 @@ impl NetlinkResponse {
     /// Returns true if this is the last response in a series of resposnes
     /// (aka, the header identifies as Done)
     pub fn is_last(&self) -> bool {
-        self.header.msg_type() == NlMsgType::Done
+        self.header.msg_type() == MessageType::Done
     }
 }
 

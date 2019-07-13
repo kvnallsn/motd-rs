@@ -8,6 +8,7 @@ const FLAGS: i32 = 0;
 
 /// Represents the various different kernel modules that we can
 /// interact with.
+#[allow(dead_code)]
 pub enum NetlinkFamily {
     /// Routing/Device hook
     Route = libc::NETLINK_ROUTE as isize,
@@ -128,55 +129,4 @@ impl NetlinkSocket {
             Ok(received as usize)
         }
     }
-}
-
-/// Supported IP protocols
-#[derive(Clone, Copy, Debug)]
-pub enum AddressFamily {
-    /// Unknown address space
-    Unknown = 0x00,
-
-    /// IPv4 address space
-    Inet = libc::AF_INET as isize,
-
-    /// IPv6 address space
-    Inet6 = libc::AF_INET6 as isize,
-
-    Unix = libc::AF_UNIX as isize,
-}
-
-impl From<u8> for AddressFamily {
-    fn from(u: u8) -> AddressFamily {
-        let i = u as i32;
-        match i {
-            libc::AF_INET => AddressFamily::Inet,
-            libc::AF_INET6 => AddressFamily::Inet6,
-            libc::AF_UNIX => AddressFamily::Unix,
-            _ => AddressFamily::Unknown,
-        }
-    }
-}
-
-impl From<i32> for AddressFamily {
-    fn from(i: i32) -> AddressFamily {
-        match i {
-            libc::AF_INET => AddressFamily::Inet,
-            libc::AF_INET6 => AddressFamily::Inet6,
-            libc::AF_UNIX => AddressFamily::Unix,
-            _ => AddressFamily::Unknown,
-        }
-    }
-}
-
-/// Supported L4 protocols
-#[derive(Clone, Copy, Debug)]
-pub enum L4Protocol {
-    /// Transmission Control Protocol
-    Tcp = 0x06,
-
-    /// User Datagaram Protocol
-    Udp = 0x11,
-
-    /// User Datagaram Protocol Lite
-    UdpLite = 136,
 }

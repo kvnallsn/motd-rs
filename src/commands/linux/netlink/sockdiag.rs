@@ -4,8 +4,6 @@
 pub mod inet;
 pub mod unix;
 
-use crate::commands::linux::netlink::AddressFamily;
-
 #[derive(Clone, Debug)]
 pub enum Response {
     None,
@@ -72,6 +70,44 @@ impl MemInfo {
             wmem_queued: u32!(v),
             opt_mem: u32!(v),
             backlog: u32!(v),
+        }
+    }
+}
+
+/// Supported IP protocols
+#[derive(Clone, Copy, Debug)]
+pub enum AddressFamily {
+    /// Unknown address space
+    Unknown = 0x00,
+
+    /// IPv4 address space
+    Inet = libc::AF_INET as isize,
+
+    /// IPv6 address space
+    Inet6 = libc::AF_INET6 as isize,
+
+    Unix = libc::AF_UNIX as isize,
+}
+
+impl From<u8> for AddressFamily {
+    fn from(u: u8) -> AddressFamily {
+        let i = u as i32;
+        match i {
+            libc::AF_INET => AddressFamily::Inet,
+            libc::AF_INET6 => AddressFamily::Inet6,
+            libc::AF_UNIX => AddressFamily::Unix,
+            _ => AddressFamily::Unknown,
+        }
+    }
+}
+
+impl From<i32> for AddressFamily {
+    fn from(i: i32) -> AddressFamily {
+        match i {
+            libc::AF_INET => AddressFamily::Inet,
+            libc::AF_INET6 => AddressFamily::Inet6,
+            libc::AF_UNIX => AddressFamily::Unix,
+            _ => AddressFamily::Unknown,
         }
     }
 }

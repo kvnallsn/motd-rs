@@ -1,16 +1,17 @@
 //! Unix socket related functions
 
 use crate::commands::linux::netlink::{
-    sockdiag::MemInfo, AddressFamily, NetlinkAttribute, NetlinkFamily, NetlinkRequest,
-    NetlinkResponse, NetlinkSocket, NlGetFlag, NlMsgHeader, NlMsgType,
+    flag::Flag,
+    header::{Header, MessageType},
+    sockdiag::{AddressFamily, MemInfo},
+    NetlinkAttribute, NetlinkFamily, NetlinkRequest,
 };
-use std::mem;
 
 /// Requests specific information about unix sockets
 #[repr(C)]
 #[derive(Clone, Debug)]
 pub struct Request {
-    hdr: NlMsgHeader,
+    hdr: Header,
     msg: NlUnixDiagReq,
 }
 
@@ -18,16 +19,16 @@ impl Request {
     /// Creates a new unix socket request that can be sent over
     /// a NETLINK socket
     pub fn new() -> Request {
-        let mut req = Request {
-            hdr: NlMsgHeader::new(
-                NlMsgType::SockDiagByFamily,
-                flags!(NlGetFlag::Dump),
-                std::mem::size_of::<NlUnixDiagReq>() as u32,
-            ),
-            msg: NlUnixDiagReq::default(),
-        };
+        let hdr = Header::new(
+            MessageType::SockDiagByFamily,
+            std::mem::size_of::<NlUnixDiagReq>() as u32,
+        )
+        .flag(Flag::Dump);
 
-        req
+        Request {
+            hdr,
+            msg: NlUnixDiagReq::default(),
+        }
     }
 
     /// Sets an RequestAttribute to respond with on the request

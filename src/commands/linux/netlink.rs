@@ -38,31 +38,19 @@ macro_rules! u32 {
     }};
 }
 
-macro_rules! flags {
-    // base case, just cast as u16
-    ($flag:expr) => ($flag as u16);
-
-    // Repetition case
-    ($v:expr, $($flag:expr),+) => (($v as u16) | flags!($($flag),+));
-}
-
-mod nlflags;
-mod nlmsgheader;
-mod nlmsgtype;
+pub(self) mod flag;
+pub(self) mod header;
 mod nlrequest;
 mod nlresponse;
 mod nlsocket;
-mod types;
-
-pub use nlflags::{NlFlag, NlGetFlag};
-pub use nlmsgheader::NlMsgHeader;
-pub use nlmsgtype::NlMsgType;
+//mod types;
 
 pub use nlrequest::NetlinkRequest;
-pub use nlresponse::{NetlinkAttribute, NetlinkResponse, NlResponsePayload};
-pub use nlsocket::{AddressFamily, L4Protocol, NetlinkFamily, NetlinkSocket};
+pub use nlresponse::{NetlinkAttribute, NetlinkResponse, Payload};
+pub use nlsocket::{NetlinkFamily, NetlinkSocket};
 
-pub use types::sockdiag;
+pub mod sockdiag;
+//pub use types::sockdiag;
 
 use log::{debug, info};
 
@@ -117,13 +105,13 @@ pub fn socket_test() {
     examine_bytes(&req);
     debug!("{:#?}", req);
 
-    let resps = req.send();
+    let resps = req.send().unwrap();
     debug!("{:#?}", resps);
 
     debug!("-----------------------------------------");
 
     let req = sockdiag::inet::Request::new();
     examine_bytes(&req);
-    let resps = req.send();
+    let resps = req.send().unwrap();
     info!("# TCPv4 Listen: {}", resps.len());
 }

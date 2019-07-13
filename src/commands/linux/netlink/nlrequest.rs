@@ -1,6 +1,7 @@
 //! A `NetlinkRequest` represents an individual request to a specific NETLINK subsystem
 
 use super::{NetlinkFamily, NetlinkResponse, NetlinkSocket};
+use std::io::Error;
 
 /// A request that will be sent to a NETLINK subsystem or family.  This trait will automatically
 /// implement sending a request to a NETLINK socket and parsing the received response.  The
@@ -16,16 +17,18 @@ pub trait NetlinkRequest: Sized {
 
     /// Sends a given message over a new NETLINK socket and parses the response
     /// into a NetlinkResponse struct.  Then returns vector of all responses received,
-    /// not including the done response
-    fn send(&self) -> Vec<NetlinkResponse> {
+    /// not including the done response if successful, or an io::Error if an error
+    /// occured
+    fn send(&self) -> Result<Vec<NetlinkResponse>, Error> {
+        let mut responses: Vec<NetlinkResponse> = Vec::new();
+
         // Create a netlink socket
-        let socket =
-            NetlinkSocket::new(self.family()).expect("failed to open netlink socket, exiting");
+        let socket = NetlinkSocket::new(self.family())?;
 
         // Send our message through the socket
-        let sent = socket.send(self).expect("failed to send message!");
-
-        let mut responses: Vec<NetlinkResponse> = Vec::new();
+        if socket.send(self)? == 0 {
+            return Ok(vec![]);
+        }
 
         let mut is_done = false;
         while !is_done {
@@ -33,9 +36,7 @@ pub trait NetlinkRequest: Sized {
             let mut buffer = vec![0u8; 16384];
 
             // Wait for a response
-            let received = socket
-                .recv(&mut buffer)
-                .expect("failed to receive message!");
+            let received = socket.recv(&mut buffer)?;
 
             // If we didn't recieve anything, break out of the loop
             if received == 0 {
@@ -59,6 +60,6 @@ pub trait NetlinkRequest: Sized {
         }
 
         // Return vector of responses
-        responses
+        Ok(responses)
     }
 }
