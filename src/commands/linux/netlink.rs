@@ -109,7 +109,9 @@ pub fn socket_test() {
         sockdiag::unix::RequestAttribute::ShowName,
         sockdiag::unix::RequestAttribute::ShowVfs,
         sockdiag::unix::RequestAttribute::ShowPeer,
+        sockdiag::unix::RequestAttribute::ShowIcons,
         sockdiag::unix::RequestAttribute::ShowRQLen,
+        sockdiag::unix::RequestAttribute::ShowMemInfo,
     ]);
     examine_bytes(&req);
     println!("{:#?}", req);

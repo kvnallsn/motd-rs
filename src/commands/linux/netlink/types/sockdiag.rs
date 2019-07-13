@@ -31,3 +31,47 @@ impl Response {
         }
     }
 }
+
+/// Memory information about Unix, Inet, and Inet6 sockets
+#[derive(Clone, Debug, Default)]
+pub struct MemInfo {
+    /// Amount of data in the receive queue
+    pub rmem_alloc: u32,
+
+    /// Receive socket buffer as set by SO_RCVBUF
+    pub rcv_buf: u32,
+
+    /// Amount of data in the send queue
+    pub wmem_alloc: u32,
+
+    /// Send socket buffer as set by SO_SNDBUF
+    pub snd_buf: u32,
+
+    /// Amount of memory scheduled for future use (TCP only)
+    pub fwd_alloc: u32,
+
+    /// Amount of data queued by TCP, but not yet sent
+    pub wmem_queued: u32,
+
+    /// Amount of memory allocated for the socket's service needs (e.g., socket filter)
+    pub opt_mem: u32,
+
+    /// Amount of packets in the backlng (not yet processed)
+    pub backlog: u32,
+}
+
+impl MemInfo {
+    /// Creates a new meminfo structure from a buffer of information
+    pub fn new(v: &mut Vec<u8>) -> MemInfo {
+        MemInfo {
+            rmem_alloc: u32!(v),
+            rcv_buf: u32!(v),
+            wmem_alloc: u32!(v),
+            snd_buf: u32!(v),
+            fwd_alloc: u32!(v),
+            wmem_queued: u32!(v),
+            opt_mem: u32!(v),
+            backlog: u32!(v),
+        }
+    }
+}

@@ -1,8 +1,8 @@
 //! Unix socket related functions
 
 use crate::commands::linux::netlink::{
-    AddressFamily, NetlinkAttribute, NetlinkFamily, NetlinkRequest, NetlinkResponse, NetlinkSocket,
-    NlGetFlag, NlMsgHeader, NlMsgType,
+    sockdiag::MemInfo, AddressFamily, NetlinkAttribute, NetlinkFamily, NetlinkRequest,
+    NetlinkResponse, NetlinkSocket, NlGetFlag, NlMsgHeader, NlMsgType,
 };
 use std::mem;
 
@@ -186,8 +186,16 @@ pub struct Response {
     /// only reported for connected sockets
     peer: Option<u32>,
 
+    /// inode numbers of sockets that have passed the `connect(2)` call
+    /// but haven't been processed with `accept(2)` yet. Only reported
+    /// for listening sockets
+    icons: Option<Vec<u32>>,
+
     /// Read and write queue information
     queue: Option<Queue>,
+
+    /// Memory information for this socket
+    mem: Option<MemInfo>,
 
     /// Internal shutdown state of socket
     shutdown: Option<u8>,
@@ -212,7 +220,9 @@ impl Response {
             name: None,
             vfs: None,
             peer: None,
+            icons: None,
             queue: None,
+            mem: None,
             shutdown: None,
         };
 
@@ -236,11 +246,22 @@ impl Response {
                     resp.peer = Some(u32!(attr.data));
                 }
             } else if attr.ty == RESP_ATTR_ICONS {
+                let mut inodes = vec![];
+                while attr.data.len() > 4 {
+                    inodes.push(u32!(attr.data));
+                }
+
+                if inodes.len() > 0 {
+                    resp.icons = Some(inodes);
+                }
             } else if attr.ty == RESP_ATTR_RQLEN {
                 if attr.data.len() >= 8 {
                     resp.queue = Some(Queue::new(u32!(attr.data), u32!(attr.data)));
                 }
             } else if attr.ty == RESP_ATTR_MEMINFO {
+                if attr.data.len() >= 32 {
+                    resp.mem = Some(MemInfo::new(&mut attr.data));
+                }
             } else if attr.ty == RESP_ATTR_SHUTDOWN {
                 // Shutdown State
                 resp.shutdown = Some(u8!(attr.data));
