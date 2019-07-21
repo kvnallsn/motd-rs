@@ -23,18 +23,63 @@ impl Net {
 
     /// Returns a formatted list of IPs assocated with network interfaces
     ///
-    /// For example, a computer with 2 interfaces (lo0, en0) with 1 IP would be:
-    /// [lo0] 127.0.0.1, [en0] 192.168.1.10,
-    pub fn ips(&self) -> String {
+    /// Arguments: Comma-separated list of strings
+    /// * `name_only` - Only show interface names, not IP addresses
+    /// * `addr_only` - Only show interface ips, not names
+    /// * `hide_loopback` - Hides the loopback address
+    /// * `hide_private` - Hide all private ips (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
+    /// * `hide_public` - Only show private ips
+    ///
+    pub fn ips(&self, args: Option<&str>) -> String {
         let mut s = String::new();
 
-        let interfaces = commands::interfaces(None);
+        let mut show_name = true;
+        let mut show_addr = true;
+        let mut hide_loopback = false;
+        let mut hide_private = false;
+        let mut hide_public = false;
+
+        if let Some(arg_str) = args {
+            for arg in arg_str.split(',') {
+                if arg == "name_only" {
+                    show_addr = false;
+                }
+
+                if arg == "addr_only" {
+                    show_name = false;
+                }
+
+                if arg == "hide_loopback" {
+                    hide_loopback = true;
+                }
+
+                if arg == "hide_private" {
+                    hide_private = true;
+                }
+
+                if arg == "hide_public" {
+                    hide_public = true;
+                }
+            }
+        }
+
+        let interfaces = commands::interfaces(hide_loopback, hide_public, hide_private);
         for (name, ips) in interfaces.iter() {
             if ips.len() > 0 {
-                s.push_str(&format!("[{}]: ", name));
+                if show_name {
+                    s.push_str(&format!("[{}]", name));
+                }
 
-                for ip in ips {
-                    s.push_str(&format!("{}", ip));
+                if show_addr {
+                    if show_name {
+                        s.push_str(": ");
+                    }
+
+                    for ip in ips {
+                        s.push_str(&format!("{}", ip));
+                    }
+                } else {
+                    s.push_str(", ")
                 }
             }
         }

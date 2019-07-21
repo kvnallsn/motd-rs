@@ -14,7 +14,7 @@
    [::::::::|  (_)  |::::::::]        Date..............: {{ date }}     
   .=----~~~~~\     /~~~~~----=.       Uptime............: {{ uptime }}
   |          /`---'\          |       Users:............: {{ users }}
-   \  \     /       \     /  /        IPs...............: {{ ipaddr }}
+   \  \     /       \     /  /        IPs...............: {{ ipaddr(addr_only,hide_loopback) }}
     `.     /         \     .'         Connections.......: {{ conns }}
       `.  /._________.\  .'           Hostname..........: {{ hostname }}
         `--._________.--'             Processes.........: {{ process }}  

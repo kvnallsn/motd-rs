@@ -67,7 +67,7 @@ impl Motd {
             "uptime" => self.sys.uptime(),
             "hostname" => self.net.hostname(),
             "users" => self.sys.users(),
-            "ipaddr" => self.net.ips(),
+            "ipaddr" => self.net.ips(args),
             "conns" => self.net.connections(),
             "process" => self.sys.processes(),
             "fortune" => commands::fortune(None),
